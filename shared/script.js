@@ -1,5 +1,7 @@
-const worker = new SharedWorker('worker.js', { name: '公共服务' })
+
 const key = Math.random().toString(16).substring(3)
+const worker = new SharedWorker('worker.js', { name: '公共服务' })
+// worker的name有id的功能，不同页面要想共享worker必须名称相同！
 
 
 
@@ -14,12 +16,7 @@ worker.port.onmessage = e => {
 const div = document.createElement('div')
 div.innerText = "stop:" + key
 div.onclick=()=>{
-    worker.port.close()
-    worker.dispatchEvent(new Event('error',{
-        msg:'close all'
-    }))
-    console.log('====')
-    worker.port.postMessage("close:"+key)
+//     worker.port.postMessage("close:"+key)
 }
 document.body.append(div)
 

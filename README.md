@@ -52,7 +52,7 @@ http://slproweb.com/products/Win32OpenSSL.html 注意网址是Window 的openssl�
 # 生成ssl 证书
 
  ```bash
-openssl genrsa -des3 -passout pass:x12yab45c -out server.pass.key 2048
+openssl genrsa -des3 -passout pass:x12yab45c -out server.pass.key 2048    # genrsa 生成私钥
  ```
 
 Generating RSA private key, 2048 bit long modulus (2 primes)
@@ -61,7 +61,7 @@ Generating RSA private key, 2048 bit long modulus (2 primes)
 e is 65537 (0x010001)
 
  ``` bash
-openssl rsa -passin pass:x12yab45c -in server.pass.key -out server.key   # 完成后，上面命令产生的server.pass.key文件可以删除了！
+openssl rsa -passin pass:x12yab45c -in server.pass.key -out server.key   # 完成后，上面命令产生的server.pass.key文件可以删除了！  rsa从私钥中提取公钥
  ```
 
 以上两个命令也可以使用默认参数直接一步生成私钥：
@@ -77,7 +77,7 @@ openssl genpkey -algorithm RSA -out server.key -pkeyopt rsa_keygen_bits:2048 # �
 writing RSA key
 
 ```bash
-openssl req -new -key server.key -out server.csr
+openssl req -new -key server.key -out server.csr     #req 生成自签证书
 ```
 
 You are about to be asked to enter information that will be incorporated into your certificate request.
@@ -134,4 +134,18 @@ server.listen(1237, () => {
     console.log('service workers: https://localhost:1237')  // 注意链接是 https协议！！
 })
 ```
+
+
+
+# openssl参考：
+
+https://blog.51cto.com/shjia/1427138
+
+https://www.cnblogs.com/pluslius/p/9936327.html
+
+https://blog.csdn.net/qq_27489007/article/details/100597938
+
+"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" --user-data-dir=C:\ChromeTempFiles --unsafely-treat-insecure-origin-as-secure=https://localhost:1237 --allow-running-insecure-content --reduce-security-for-testing
+
+
 

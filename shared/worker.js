@@ -1,10 +1,11 @@
 
-
+let buf=[]
 onconnect = function (c) {
     let port = c.ports[0]   
  
     port.onmessage = (m) => {  
-        console.log(m.data)     
+        buf.push(m.data)
+        console.log(buf)     
         port.postMessage('worker receive:' + m.data)
     }
 
@@ -26,9 +27,13 @@ onconnect = function (c) {
  * 共享worker需要通过port创建连接：
  **   如果不是onmessage,而是通过addEventListener监听message，必须显式调用start开启连接
  **   经过测试未开启连接的一方，将只能发送消息（能够成功），但不能接收消息
- * 不同页面发起的链接，在serviceWorker内部是不同的对象，可以通过这个来监听
+ * 不同页面发起的链接，在sharedWorker内部是不同的对象，可以通过这个来监听
  * worker.port.close() 只是关闭当前连接，其他连接（如果有的话）不会受到影响
  * 
+ * 
+ * 刚开始接触sharedWorker时发现worker内部打印的日志在console上没有，总以为出错了。
+ * 其实这是正常的，sharedWorker独立于具体的页面（因为是公共的），页面的console当然看不到日志了。
+ * 输入`chrome://inspect/#workers` 就可以打开worker调试页面了！
  *
  * xhr的响应responseXML和channel总为null，
  * 一般（有特例），worker的CSP（Content-Security-Policy）配置是不受限于父worker或主线程，它有自己的执行上下文
