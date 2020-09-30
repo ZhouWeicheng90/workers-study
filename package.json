@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "serve":"node server.js"
+    "serve": "node server.js"
   },
   "repository": {
     "type": "git",
@@ -18,6 +18,9 @@
   },
   "homepage": "https://github.com/ZhouWeicheng90/workers-study#readme",
   "devDependencies": {
-    "express": "^4.17.1"
-  }
+    "express": "^4.17.1",
+    "express-to-https": "^1.0.3",
+    "spdy": "^4.0.2"
+  },
+  "dependencies": {}
 }
