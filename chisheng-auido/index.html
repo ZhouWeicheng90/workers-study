@@ -1,0 +1,217 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset=utf-8 />
+        <title>Recorder英文句子评分</title>
+        <script type="text/javascript" src="https://sdk.cloud.chivox.com/chivoxsdk-js/v4.0/Resources/jquery/jquery-1.6.2.min.js"></script>
+		<script type="text/javascript" src="https://sdk.cloud.chivox.com/chivoxsdk-js/v6.0/chivox.min.js"></script>
+		<!--样式-->
+		<style type="text/css">
+            body { text-align: center; }
+            #container { background: #eee; width: 800px; min-height: 600px; margin: 0 auto; text-align: left; }
+            #containerInner { position: relative; padding: 20px; }
+			/*按钮样式设置*/
+			#btn button{ width:50px; height:32px; line-height:32px; border:0; padding:0; margin:0; cursor:pointer;}
+			#btn button{ *margin-right:5px;}
+			#btn .r_play{ background:#8AD7FB url(images/icon.png) no-repeat 7px -184px;}	
+			#btn .r_record{ background:#8AD7FB url(images/icon.png) no-repeat -147px -186px;}
+			#btn .r_replay{ background:#CCC url(images/icon.png) no-repeat -89px -184px; cursor:default;}
+			
+			#aiPanel .r_replay{ background:#8AD7FB url(images/icon.png) no-repeat -89px -184px;}
+			#aiPanel .replayOn{ background:#8AD7FB url(images/icon.png) no-repeat -42px -184px;}
+			#aiPanel .recordProgressBar{ width:166px; height:10px; border:1px solid #61A7F5; margin-top:10px; font-size:1px; line-height:1px; display:none;}
+			#aiPanel .recordProgressBar .value{ background:#8AD7FB; width:0; height:10px; font-size:1px; line-height:1px;}
+			
+		</style>
+	</head>
+    <body>
+        <div id="container">
+            <div id="containerInner">
+                <div id="content">
+                    <h1>Recorder搭建英文句子评分应用（jssdk_6.0）</h1>
+                    <p class="currentWord">
+                    </p>
+                    <div id="btn" style="height:50px;">
+                        <div>
+                            <button class="r_play" id="r_play"></button>
+                            <button class="r_record" id="r_record"></button>
+                            <button class="r_replay" id="r_replay"></button>
+                        </div>
+                    </div>
+                    <div id="chivox-recorder"></div>
+                    <p id="scoreResult">
+		                总得分：<span class="pron">0</span><br />
+		                流利度：<span class="fluency">0</span><br />
+		                准确度：<span class="accuracy">0</span><br />
+		                完整度：<span class="integrity">0</span><br />
+                    </p>
+                    <!-- #content end  -->
+                </div>
+            </div>
+        </div>
+    </body>
+<script type="text/javascript">
+$(document).ready(function(){
+    var refText = "I want to know the past and present of Hong Kong.";
+    $("#content .currentWord").html(refText);
+
+    /**************初始化SDK-start**************/
+    /*创建一个播放器*/
+    var player = new Html5Player();
+    /*创建一个*/
+    var recorder = new Html5Recorder({
+    	server:'wss://cloud.chivox.com',
+        appKey: '1565922075000023',
+        sigurl: 'php/sig.php', 
+        onInit: function (mess) {
+            console.log("onInit success");
+        }, 
+        onError: function (err) {
+            console.log("onError:",err);
+        }
+    });    
+    /**************初始化SDK-end**************/
+
+
+	/************录音按钮点击事件，开始录音接口*************/
+	var recordFlag = true;
+    $("#r_record").click(function(){
+	    if(recordFlag){
+			// $('#r_record').css("background","#8AD7FB url(images/icon.png) no-repeat -186px -186px");
+	        recordFlag = false;
+			recorder.showVolumeBar();/*显示波形图*/
+	        recorder.stopRecord();
+	        recorder.record({
+	            duration:8000,
+	            playDing: true,
+	            serverParams:{
+	                coreType: "en.sent.score",
+	                /*res: "eng.snt.g4",*/
+	                refText: refText,
+	                rank: 100,
+	                userId: "tester",
+	                attachAudioUrl: 1,
+					result:{
+					          details: {
+										raw : 1
+										}
+						   }
+	            },
+	            onRecordIdGenerated:function (tokenId) {
+	                console.log("========onRecordIdGenerated start========");
+	                var lastTokenID = tokenId.tokenId;
+	                console.log(JSON.stringify(tokenId));
+	                console.log("========onRecordIdGenerated end========");
+	            },
+	            onStart:function () {
+	                console.log("onStart");
+				    $("#scoreResult .pron").html(0);
+				    $("#scoreResult .fluency").html(0);
+				    $("#scoreResult .accuracy").html(0);
+				    $("#scoreResult .integrity").html(0);
+	            },        
+	            onStop:function () {
+					$('#r_record').css("background","#8AD7FB url(images/icon.png) no-repeat -147px -186px");
+	                console.log("onStop");
+	            },
+	            onScore:function (score) {
+					/*评测成功允许回放按钮样式*/
+					$('#r_replay').css("background","#8AD7FB url(images/icon.png) no-repeat -89px -184px");
+					$('#r_replay').css("cursor","pointer");
+					
+	            	recordFlag = true;
+	            	recorder.stopRecord();
+	                console.log(score.result);
+				    $("#scoreResult .pron").html(score.result.overall);
+				    $("#scoreResult .fluency").html(score.result.fluency.overall);
+				    $("#scoreResult .accuracy").html(score.result.accuracy);
+				    $("#scoreResult .integrity").html(score.result.integrity);
+	            },
+	            onScoreError:function (err) {
+					$('#r_record').css("background","#8AD7FB url(images/icon.png) no-repeat -147px -186px");
+	            	recordFlag = true;
+	            	recorder.stopRecord();
+	            	recorder.reset();
+	                alert(JSON.stringify(err));
+	            }
+	        })
+	    }else{
+			// $('#r_record').css("background","#8AD7FB url(images/icon.png) no-repeat -147px -186px");
+	    	recordFlag = true;
+	    	recorder.stopRecord();/*  */
+	        console.log("record stop!")
+	    }
+    });
+
+	/*****************回放录音************************/
+	var replayFlag=true;
+    $(".r_replay").click(function(){
+    	if(replayFlag){
+			$('#r_replay').css("background","#8AD7FB url(images/icon.png) no-repeat -42px -184px");
+			$('#r_replay').css("cursor","pointer");
+	    	replayFlag=false;
+	    	recorder.startReplay({
+	    		onStop:function () {
+					$('#r_replay').css("background","#8AD7FB url(images/icon.png) no-repeat -89px -184px");
+	    			replayFlag=true;
+	                console.log("startReplay");
+	            }
+	    	});
+	    }else{
+			$('#r_replay').css("background","#8AD7FB url(images/icon.png) no-repeat -89px -184px");
+	    	replayFlag=true;
+	    	recorder.stopReplay();
+	    }
+    });
+
+    /*****************点击播放标准音频按钮***************/
+    var playStatus = true;
+    $(".r_play").click(function(){
+    if(playStatus){
+		$('#r_play').css("background","#8AD7FB url(images/icon.png) no-repeat -42px -184px");
+    	playStatus=false;
+    	player.setVolume(0.9);/*设置播放音频音量大小 0~1 */
+        player.load({
+            url:"audio/sent.mp3",
+            success:function () {
+                console.log("player start success.");
+                player.play({
+                    position:0,	//播放位置
+                    duration:8000,	//播放时长
+                    onStop:function () {
+						$('#r_play').css("background","#8AD7FB url(images/icon.png) no-repeat 7px -184px");
+    					playStatus=true;
+                        console.log("player onStop");
+                        /*获取当前播放音频的音量，精度与设置的有出入*/
+                        console.log("Volume:"+player.getVolume());
+                    },
+                    onStart:function () {
+                        console.log("player onStart");
+                    },
+					error:function(err){
+						$('#r_play').css("background","#8AD7FB url(images/icon.png) no-repeat 7px -184px");
+						console.log(err);
+					}
+                })
+            },
+            error:function (err) {
+				$('#r_play').css("background","#8AD7FB url(images/icon.png) no-repeat 7px -184px");
+    			playStatus=true;
+            	player.stop(); /*手动停止音频播放*/
+            	player.reset(); /*重置播放器状态*/
+                console.log("player error:" + JSON.stringify(err));
+            }
+        })
+    }else{
+		$('#r_play').css("background","#8AD7FB url(images/icon.png) no-repeat 7px -184px");
+    	playStatus=true;
+        player.stop();
+    }
+    });
+    
+});
+</script>
+
+
+</html>

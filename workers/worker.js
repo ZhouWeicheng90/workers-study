@@ -11,18 +11,9 @@ addEventListener('message', function (e) {
 
 
 
-/**
- * web worker 不能访问sessionStorage，localStorage！
- * self 相当于this，相当于不写。（不写时即使"use strict"了也正确）
- * onMessage 和 addEventListener 都行,其他类似
- * 内部关闭 this.close() 外部关闭  worker.terminate()
- * importScripts('script1.js', 'script2.js');  在worker内部引用其他脚本  ---   脚本下载顺序不固定，但执行会按顺序。
- * 监听错误：worker.onerror(外部),this.onerror(内部)  --- lineno,filename,message
+/** 
  * worker不一定非要单独创建一个文件，参考"单文件创建worker.md"
- * worker内部还能再创建worker，父worker和子worke的交互方式相同  ---  所有worker均遵循同源限制。
- * onmessageerror和onerror不同，onmessageerror仅仅是发送的数据无法序列化成字符串时，会触发这个事件
- *
- *
+ * 
  * worker与主线程传递数据是 拷贝传值，传的是值的拷贝而不是引用，但：
  * 如果传递的是二进制，如一个500M的文件呢？
  * 把二进制数据直接转移给子线程，但是一旦转移，主线程就无法再使用这些二进制数据了,这个操作需要这个对象是 Transferable objects

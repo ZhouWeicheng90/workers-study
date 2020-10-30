@@ -1,5 +1,6 @@
-
+console.log('==start worker===')
 let buf=[]
+console.log(self,self===SharedWorkerGlobalScope,self instanceof SharedWorkerGlobalScope)
 onconnect = function (c) {
     let port = c.ports[0]   
  
@@ -22,8 +23,8 @@ onconnect = function (c) {
 // }
 
 /**
- * 专用worker，即普通的worker，仅能被生成它的脚本所使用，下文是DedicatedWorkerGlobalScope对象
- * 共享worker，即sharedWorker，可以被不同的window，iframe，worker访问。上下文是 SharedWorkerGlobalScope 对象
+ * 
+ * 
  * 共享worker需要通过port创建连接：
  **   如果不是onmessage,而是通过addEventListener监听message，必须显式调用start开启连接
  **   经过测试未开启连接的一方，将只能发送消息（能够成功），但不能接收消息
