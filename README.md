@@ -1,60 +1,24 @@
 # workers-study
 
-serviceWorker
-
-https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API
-
-一般作为web应用程序、浏览器和网络（如果可用）之前的代理服务器。它们旨在（除开其他方面）创建有效的离线体验，拦截网络请求，以及根据网络是否可用采取合适的行动并更新驻留在服务器上的资源。他们还将允许访问推送通知和后台同步API。
-
-
-
-只有worker和sharedWorker才是标准通用的
-
-为什么sharedWorker在手机端的浏览器基本都没有实现？手机端谁会开启多个窗口？？
-
-
-
-除了serviceworker，专用的还有audioWorker：
-
-https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API#Audio_Workers
-
-使得在web worker上下文中直接完成脚本化音频处理成为可能。
-
-
-
-web worker 不能访问sessionStorage，localStorage！
-
-self 相当于this，相当于不写。（不写时即使"use strict"了也正确）
-
-onMessage 和 addEventListener 都行,其他类似
-
-内部关闭 this.close() 外部关闭 worker.terminate()
-
-importScripts('script1.js', 'script2.js'); 在worker内部引用其他脚本 ---  脚本下载顺序不固定，但执行会按顺序。
-
-监听错误：worker.onerror(外部),this.onerror(内部) --- lineno,filename,message
+``` js
+/**
+ * 
+ * xhr的响应responseXML和channel总为null，
+ * 一般（有特例），worker的CSP（Content-Security-Policy）配置是不受限于父worker或主线程，它有自己的执行上下文
+ *
+ */
+worker工程化 
+storage不可用 不能访问sessionStorage，localStorage！
+worker中多文件的集成
+```
 
 worker内部还能再创建worker，父worker和子worke的交互方式相同 --- 所有worker均遵循同源限制。
 
-onmessageerror和onerror不同，onmessageerror仅仅是发送的数据无法序列化成字符串时，会触发这个事件
+## webpack中的worker打包
+
+importScripts('script1.js', 'script2.js'); 在worker内部引用其他脚本 ---  脚本下载顺序不固定，但执行会按顺序。
 
 
-
-专用worker，即普通的worker，仅能被生成它的脚本所使用，下文是DedicatedWorkerGlobalScope对象
-
-共享worker，即sharedWorker，可以被不同的window，iframe，worker访问。上下文是 SharedWorkerGlobalScope 对象
-
-```js
-if(!(this instanceof SharedWorkerGlobalScope)){
-    throw new Error('this jsFile must be executed in sharedWorker!')
-}
-```
-
-这两种scope的基类都是WorkerGlobalScope
-
-
-
-## 工程构建中的worker
 
 如果路径错误，在new worker时能成功创建worker，但worker实例中会报错：
 
@@ -120,14 +84,15 @@ this.dbPromise.then(DB => {   // 引入脚本是同步的，这里可以安全�
 
 ```
 
-## worker内部运行异常的处理
+## worker的异常
+
+监听错误：worker.onerror(外部),this.onerror(内部) --- lineno,filename,message
+
+onmessageerror和onerror不同，onmessageerror仅仅是发送的数据无法序列化成字符串时，会触发这个事件
 
 通常抛出一个异常，外界就会捕获异常，但是worker内部的抛出异常，主线程无法捕获到！
 
-``` js
-throw e   // 外界无法获取
-// 在sharedWorker例子中，如果worker脚本内只有一句异常抛出，可以很清楚发现，主线程没有任何影响！而worker的console会打印出错误未捕获提示
-```
+
 
 既然抛出异常无法通知到主线程，我们可以尝试dispatchEvent发出事件：
 
@@ -271,8 +236,6 @@ commandHandlerProxy.last(customPostMessage, params)   // 这里尽然触发了 g
 })
 ```
 
-
-
 # https（service Worker初探）
 
 ## 安装OpenSSL
@@ -400,122 +363,77 @@ app.use(express.static('files'))
 
 
 
-``` js
-// 添加，修改时都必须显式的指明key。
-objectStore.add(data, 'fkey1')
-objectStore.put(data, 'fkey1')
-objectStore.delete(data)      
-// 'keyPath' 或 'autoIncrement'(key generator) 两两组合有以下四种定义key的方法：
-const objStore = db.createObjectStore("storeName");
-const objStore = db.createObjectStore("storeName", { autoIncrement : true });
-const objStore = db.createObjectStore("storeName", { keyPath : 'id' });
-const objStore = db.createObjectStore("storeName", { keyPath : 'id', autoIncrement : true });
-```
-
-数据中不会有任何key的信息，所以这种方式的objectStore通常作为其他store的附属，key就是另一个store的data的某个字段。
 
 
+# 解决worker在webpack中无法识别路径的可能方式
+
+核心都是读取当前文件的字符串片段，将其封装成blob，进而获取blob的url，由这个url创建worker
+
+### 提前放在无法识别的scirpt中
+
+通常情况下，Worker 载入的是一个单独的 JavaScript 脚本文件，但是也可以载入与主线程在同一个网页的代码。
+
+> ```markup
+> <!DOCTYPE html>
+> <body>
+>  <script id="worker" type="app/worker">
+>    addEventListener('message', function () {
+>      postMessage('some message');
+>    }, false);
+>  </script>
+> </body>
+> </html>
+> ```
+
+上面是一段嵌入网页的脚本，注意必须指定`<script>`标签的`type`属性是一个浏览器不认识的值，上例是`app/worker`。
+
+然后，读取这一段嵌入页面的脚本，用 Worker 来处理。
+
+> ```javascript
+> var blob = new Blob([document.querySelector('#worker').textContent]);
+> var url = window.URL.createObjectURL(blob);
+> var worker = new Worker(url);
+> 
+> worker.onmessage = function (e) {
+> // e.data === 'some message'
+> };
+> ```
 
 
 
+### 传入简单字符串
 
-
-
-
-### Object.is
-
-Object.is(a,b)  比较相等 类似于a===b, 不过 ：
-
-`===` 运算符将数字 `-0` 和 `+0` 视为相等 ，而将[`Number.NaN`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Number/NaN) 与[`NaN`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/NaN)视为不相等.
-
-Object.is将数字 `-0` 和 `+0` 视为不相等 ，而将[`Number.NaN`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Number/NaN) 与[`NaN`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/NaN)视为相等.
-
-### Object之prototype相关
-
-```js
-Object.setPrototypeOf(object1, prototype)  // 设置 object1 的原型为 prototype 对象（可以为null）
-prototype1.isPrototypeOf(object1)  // object1 是 prototype1 的原型吗？
-const object1 = Object.create(prototype1,config?)  // 指定原型对象，创建一个对象.  config 是属性配置，参考defineProperties
-Object.getPrototypeOf(object1)   // 返回对象 object1 的原型对象
-
-```
-
-### object常用
-
-``` js
-Object.assign(target,source1,source2...)   // 改变target 并返回target
-Object.values(obj)  // 返回values
-Object.keys(obj)  // 返回keys
-Object.fromEntries(entries)  // entries是一个二维数组，内部的每个数组都有两个元素[key,value]
-Object.entries(obj)  // 返回entries数组
-```
-
-### 对象的可扩展，密封 和 冻结：
-
-```js
-Object.seal(obj)
-Object.freeze(obj)
-Object.preventExtensions(obj)
-Object.isSealed(obj)
-Object.isFrozen(obj)
-Object.isExtensible(obj)
-```
-
-### 属性相关
-
-```js
-Object.defineProperties(obj,configs)   // configs是 {key:config ...} 这样的对象
-Object.defineProperty(obj,key,config)   // get set value writable enumerable configurable
-Object.getOwnPropertyDescriptor(object1, 'property1');  // 返回config
-Object.getOwnPropertyDescriptors(obj)   // 返回configs
-
-Object.getOwnPropertyNames(obj)        // 返回的是所有 正常 的key   数字会变成字符串
-Object.getOwnPropertySymbols(obj)   // 返回的是所有 symbol 的key
-array1.propertyIsEnumerable(0)   // 返回true，0这个属性时可枚举的
-// for...in语句以任意顺序遍历一个对象的 除Symbol以外的 可枚举属性。
-
-obj.hasOwnProperty('key')   // 对象obj，是否有key这个属性
-```
-
-### try catch 能够完美的用于await
-
-![image-20201030184227731](E:\MGh\workers-study\image-20201030184227731.png)
-
-结果：
-
-![image-20201030184249806](E:\MGh\workers-study\image-20201030184249806.png)
-
-![image-20201030184315547](E:\MGh\workers-study\image-20201030184315547.png)
-
-结果：
-
-![image-20201030184331054](E:\MGh\workers-study\image-20201030184331054.png)
-
-### 黑科技：用label控制多重循环
-
-```js
-var i, j;
-
-loop1:
-for (i = 0; i < 3; i++) {     
-   loop2:
-   for (j = 0; j < 3; j++) {  
-      if (i == 1 && j == 1) {
-         break loop1;    // 这里直接退出外层循环
-         // continue loop1;   // 这里退出内层循环，继续外层的下一条循环
-      }
-      console.log("i = " + i + ", j = " + j);
-   }
+```javascript
+function createWorker(f) {
+  var blob = new Blob(['(' + f.toString() +')()']);
+  var url = window.URL.createObjectURL(blob);
+  var worker = new Worker(url);
+  return worker;
 }
+
+var pollingWorker = createWorker(function (e) {
+  var cache;
+
+  function compare(new, old) { ... };
+
+  setInterval(function () {
+    fetch('/my-api-endpoint').then(function (res) {
+      var data = res.json();
+
+      if (!compare(data, cache)) {
+        cache = data;
+        self.postMessage(data);
+      }
+    })
+  }, 1000)
+});
+
+pollingWorker.onmessage = function () {
+  // render data
+}
+
+pollingWorker.postMessage('init');
 ```
-
-
-
-
-
-
-
-
 
 
 

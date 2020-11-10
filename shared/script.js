@@ -1,39 +1,42 @@
 
-const key = Math.random().toString(16).substring(3)
 const worker = new SharedWorker('worker.js', { name: '公共服务' })
-// worker的name有id的功能，不同页面要想共享worker必须名称相同！
 
 
-
-
-worker.port.postMessage(key)
 worker.port.onmessage = e => {
-    console.log(e.data)
+    console.log('[main receive]', e.data)
+
+}
+// worker.port.onmessageerror=e=>{
+//     console.log('msg err:',e)
+// }
+
+
+
+console.log(worker.port)
+function send() {
+    const key = Math.random().toString(16).substring(2)
+    worker.port.postMessage(key)
 }
 
-
-
-const div = document.createElement('div')
-div.innerText = "stop:" + key
-div.onclick=()=>{
-//     worker.port.postMessage("close:"+key)
+function close() {
+    worker.port.close()
 }
-document.body.append(div)
+// 
+
+function fn() {
+    const btn1 = document.createElement('button')
+    btn1.onclick = send
+    btn1.innerText = "发送"
+
+    const btn2 = document.createElement('button')
+    btn2.onclick = close
+    btn2.innerText = '关闭'
+
+    document.body.append(btn1, btn2)
+
+}
+
+setTimeout(fn, 500);
 
 
 
-
-
-
-
-
-// worker.port.postMessage({
-//     isTest:true,
-//     msg:new Number(2)
-// })
-
-
-/* worker.port.start()
-worker.port.addEventListener('message',e=>{
-    console.log(e)
-}) */
